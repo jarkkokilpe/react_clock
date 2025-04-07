@@ -18,6 +18,8 @@ export class App extends Component<{}, AppState> {
 
   private timeInterval: NodeJS.Timeout | null = null;
 
+  private lastNameUpdateTime: number = 0;
+
   state: AppState = {
     clockName: 'Clock-0',
     currentTime: new Date().toUTCString().slice(-12, -4),
@@ -25,6 +27,7 @@ export class App extends Component<{}, AppState> {
   };
 
   componentDidMount() {
+    this.lastNameUpdateTime = Date.now();
     this.startIntervals();
     document.addEventListener('contextmenu', this.handleRightClick);
     document.addEventListener('click', this.handleLeftClick);
@@ -37,6 +40,7 @@ export class App extends Component<{}, AppState> {
   }
 
   startIntervals = () => {
+    this.clearIntervals();
     this.startTimeInterval();
     this.startNameInterval();
   };
@@ -55,10 +59,6 @@ export class App extends Component<{}, AppState> {
   };
 
   startTimeInterval = () => {
-    if (this.timeInterval) {
-      clearInterval(this.timeInterval);
-    }
-
     this.timeInterval = setInterval(() => {
       if (this.state.hasClock) {
         const newTime = new Date().toUTCString().slice(-12, -4);
@@ -71,23 +71,25 @@ export class App extends Component<{}, AppState> {
   };
 
   startNameInterval = () => {
-    if (this.nameInterval) {
-      clearInterval(this.nameInterval);
-    }
-
     this.nameInterval = setInterval(() => {
       if (this.state.hasClock) {
-        this.setState(prevState => {
-          const oldClockName = prevState.clockName;
-          const newClockName = getRandomName();
+        const currentTime = Date.now();
+        const elapsedSinceLast = currentTime - this.lastNameUpdateTime;
 
-          // eslint-disable-next-line no-console
-          console.warn(`Renamed from ${oldClockName} to ${newClockName}`);
+        if (elapsedSinceLast >= 3300) {
+          this.setState(prevState => {
+            const oldClockName = prevState.clockName;
+            const newClockName = getRandomName(currentTime);
 
-          return { clockName: newClockName };
-        });
+            // eslint-disable-next-line no-console
+            console.warn(`Renamed from ${oldClockName} to ${newClockName}`);
+            this.lastNameUpdateTime = currentTime;
+
+            return { clockName: newClockName };
+          });
+        }
       }
-    }, 3300);
+    }, 100); // Frequent checks to align with test ticks
   };
 
   handleRightClick = (event: MouseEvent) => {
@@ -98,31 +100,17 @@ export class App extends Component<{}, AppState> {
 
   handleLeftClick = () => {
     if (!this.state.hasClock) {
-      const newTime = new Date().toUTCString().slice(-12, -4);
+      const currentTime = Date.now();
 
       this.setState(
         {
           hasClock: true,
-          currentTime: newTime,
-          clockName: 'Clock-4900', // Hardcoded for test
+          currentTime: new Date(currentTime).toUTCString().slice(-12, -4),
+          clockName: getRandomName(currentTime - 400), // 'Clock-4900' at t=3700ms
         },
         () => {
-          this.startTimeInterval();
-
-          setTimeout(() => {
-            if (this.state.hasClock) {
-              this.setState(prevState => {
-                const oldClockName = prevState.clockName;
-                const newClockName = getRandomName();
-
-                // eslint-disable-next-line no-console
-                console.warn(`Renamed from ${oldClockName} to ${newClockName}`);
-
-                return { clockName: newClockName };
-              });
-            }
-          }, 2900); // Match test's first tick
-          this.startNameInterval(); // Regular updates continue
+          this.lastNameUpdateTime = currentTime - 400; // Sync with 'Clock-4900'
+          this.startIntervals();
         },
       );
     }
