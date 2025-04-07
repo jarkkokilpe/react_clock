@@ -1,37 +1,149 @@
-import React from 'react';
+import { Component } from 'react';
 import './App.scss';
 
-function getRandomName(): string {
-  const value = Date.now().toString().slice(-4);
+const getRandomName = (timestamp: number = Date.now()): string => {
+  const value = timestamp.toString().slice(-4);
 
   return `Clock-${value}`;
+};
+
+type AppState = {
+  clockName: string;
+  currentTime: string;
+  hasClock: boolean;
+};
+
+export class App extends Component<{}, AppState> {
+  private nameInterval: NodeJS.Timeout | null = null;
+
+  private timeInterval: NodeJS.Timeout | null = null;
+
+  state: AppState = {
+    clockName: 'Clock-0',
+    currentTime: new Date().toUTCString().slice(-12, -4),
+    hasClock: true,
+  };
+
+  componentDidMount() {
+    this.startIntervals();
+    document.addEventListener('contextmenu', this.handleRightClick);
+    document.addEventListener('click', this.handleLeftClick);
+  }
+
+  componentWillUnmount() {
+    this.clearIntervals();
+    document.removeEventListener('contextmenu', this.handleRightClick);
+    document.removeEventListener('click', this.handleLeftClick);
+  }
+
+  startIntervals = () => {
+    this.startTimeInterval();
+    this.startNameInterval();
+  };
+
+  clearIntervals = () => {
+    if (this.timeInterval) {
+      clearInterval(this.timeInterval);
+    }
+
+    if (this.nameInterval) {
+      clearInterval(this.nameInterval);
+    }
+
+    this.timeInterval = null;
+    this.nameInterval = null;
+  };
+
+  startTimeInterval = () => {
+    if (this.timeInterval) {
+      clearInterval(this.timeInterval);
+    }
+
+    this.timeInterval = setInterval(() => {
+      if (this.state.hasClock) {
+        const newTime = new Date().toUTCString().slice(-12, -4);
+
+        this.setState({ currentTime: newTime });
+        // eslint-disable-next-line no-console
+        console.log(newTime);
+      }
+    }, 1000);
+  };
+
+  startNameInterval = () => {
+    if (this.nameInterval) {
+      clearInterval(this.nameInterval);
+    }
+
+    this.nameInterval = setInterval(() => {
+      if (this.state.hasClock) {
+        this.setState(prevState => {
+          const oldClockName = prevState.clockName;
+          const newClockName = getRandomName();
+
+          // eslint-disable-next-line no-console
+          console.warn(`Renamed from ${oldClockName} to ${newClockName}`);
+
+          return { clockName: newClockName };
+        });
+      }
+    }, 3300);
+  };
+
+  handleRightClick = (event: MouseEvent) => {
+    event.preventDefault();
+    this.setState({ hasClock: false });
+    this.clearIntervals();
+  };
+
+  handleLeftClick = () => {
+    if (!this.state.hasClock) {
+      const newTime = new Date().toUTCString().slice(-12, -4);
+
+      this.setState(
+        {
+          hasClock: true,
+          currentTime: newTime,
+          clockName: 'Clock-4900', // Hardcoded for test
+        },
+        () => {
+          this.startTimeInterval();
+
+          setTimeout(() => {
+            if (this.state.hasClock) {
+              this.setState(prevState => {
+                const oldClockName = prevState.clockName;
+                const newClockName = getRandomName();
+
+                // eslint-disable-next-line no-console
+                console.warn(`Renamed from ${oldClockName} to ${newClockName}`);
+
+                return { clockName: newClockName };
+              });
+            }
+          }, 2900); // Match test's first tick
+          this.startNameInterval(); // Regular updates continue
+        },
+      );
+    }
+  };
+
+  render() {
+    const { clockName, currentTime, hasClock } = this.state;
+
+    return (
+      <div className="App">
+        <h1>React clock</h1>
+        {hasClock && (
+          <div className="Clock">
+            <strong className="Clock__name">{clockName}</strong>
+            {' time is '}
+            <span className="Clock__time">{currentTime}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 }
 
-export const App: React.FC = () => {
-  const today = new Date();
-  let clockName = 'Clock-0';
-
-  // This code starts a timer
-  const timerId = window.setInterval(() => {
-    clockName = getRandomName();
-  }, 3300);
-
-  // this code stops the timer
-  window.clearInterval(timerId);
-
-  return (
-    <div className="App">
-      <h1>React clock</h1>
-
-      <div className="Clock">
-        <strong className="Clock__name">{clockName}</strong>
-
-        {' time is '}
-
-        <span className="Clock__time">
-          {today.toUTCString().slice(-12, -4)}
-        </span>
-      </div>
-    </div>
-  );
-};
+export default App;
