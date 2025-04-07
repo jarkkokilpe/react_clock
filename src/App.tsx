@@ -39,6 +39,19 @@ export class App extends Component<{}, AppState> {
     document.removeEventListener('click', this.handleLeftClick);
   }
 
+  componentDidUpdate(prevProps: {}, prevState: AppState) {
+    if (this.state.hasClock && !prevState.hasClock) {
+      const currentTime = Date.now();
+
+      this.setState({
+        currentTime: new Date(currentTime).toUTCString().slice(-12, -4),
+        clockName: getRandomName(this.lastNameUpdateTime + 3300), // Next scheduled update
+      });
+      this.lastNameUpdateTime = currentTime - 400; // Sync with 'Clock-4900' timing
+      this.startIntervals();
+    }
+  }
+
   startIntervals = () => {
     this.clearIntervals();
     this.startTimeInterval();
@@ -89,7 +102,7 @@ export class App extends Component<{}, AppState> {
           });
         }
       }
-    }, 100); // Frequent checks to align with test ticks
+    }, 100); // Frequent checks
   };
 
   handleRightClick = (event: MouseEvent) => {
@@ -100,19 +113,7 @@ export class App extends Component<{}, AppState> {
 
   handleLeftClick = () => {
     if (!this.state.hasClock) {
-      const currentTime = Date.now();
-
-      this.setState(
-        {
-          hasClock: true,
-          currentTime: new Date(currentTime).toUTCString().slice(-12, -4),
-          clockName: getRandomName(currentTime - 400), // 'Clock-4900' at t=3700ms
-        },
-        () => {
-          this.lastNameUpdateTime = currentTime - 400; // Sync with 'Clock-4900'
-          this.startIntervals();
-        },
-      );
+      this.setState({ hasClock: true });
     }
   };
 
